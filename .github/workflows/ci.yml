@@ -26,22 +26,7 @@ jobs:
       - name: 'Build with Gradle 🏗️'
         uses: gradle/gradle-build-action@v3
         with:
-          arguments: build test publish
-        env:
-          SNAPSHOTS_MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
-          SNAPSHOTS_MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
-      - name: 'Publish Test Report 📊'
-        uses: mikepenz/action-junit-report@v5
-        if: success() || failure() # Continue on failure
-        with:
-          report_paths: '**/build/test-results/test/TEST-*.xml'
-      - name: 'Fetch Version Name 📝'
-        run: |
-          echo "::set-output name=VERSION_NAME::$(${{github.workspace}}/gradlew properties --no-daemon --console=plain -q | grep "^version:" | awk '{printf $2}')"
-        id: fetch-version
-      - name: Get Version
-        run: |
-          echo "version_name=${{steps.fetch-version.outputs.VERSION_NAME}}" >> $GITHUB_ENV
+          arguments: build test
       - name: 'Upload Artifacts 🚀'
         uses: actions/upload-artifact@v4
         with:
