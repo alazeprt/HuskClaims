@@ -1,76 +1,33 @@
-name: CI Tests & Publish
+# Automatically build the project and run any configured tests for every push
+# and submitted pull request. This can help catch issues that only occur on
+# certain platforms or Java versions, and provides a first line of defence
+# against bad commits.
 
-on:
-  push:
-    branches: [ 'master' ]
-    paths-ignore:
-      - 'docs/**'
-      - 'workflows/**'
-      - 'README.md'
-
-permissions:
-  contents: read
-  checks: write
+name: AHuskClaims CI
+on: push
 
 jobs:
   build:
+    # Only run on PRs if the source branch is on someone else's repo
+    if: ${{ github.event_name != 'pull_request' || github.repository != github.event.pull_request.head.repo.full_name }}
     runs-on: ubuntu-latest
     steps:
-      - name: 'Checkout for CI 🛎️'
-        uses: actions/checkout@v4
-      - name: 'Set up JDK 21 📦'
-        uses: actions/setup-java@v4
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+      - name: Set up JDK
+        uses: actions/setup-java@v3
         with:
-          java-version: '21'
           distribution: 'temurin'
-      - name: 'Build with Gradle 🏗️'
-        uses: gradle/gradle-build-action@v3
+          java-version: '21'
+      - name: make gradle wrapper executable
+        run: chmod +x ./gradlew
+      - name: Build
+        run: ./gradlew build shadowJar
+      - name: capture build artifacts
+        uses: actions/upload-artifact@v4.6.0
         with:
-          arguments: build test publish
-        env:
-          SNAPSHOTS_MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
-          SNAPSHOTS_MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
-      - name: 'Publish Test Report 📊'
-        uses: mikepenz/action-junit-report@v5
-        if: success() || failure() # Continue on failure
-        with:
-          report_paths: '**/build/test-results/test/TEST-*.xml'
-      - name: 'Fetch Version Name 📝'
-        run: |
-          echo "::set-output name=VERSION_NAME::$(${{github.workspace}}/gradlew properties --no-daemon --console=plain -q | grep "^version:" | awk '{printf $2}')"
-        id: fetch-version
-      - name: Get Version
-        run: |
-          echo "version_name=${{steps.fetch-version.outputs.VERSION_NAME}}" >> $GITHUB_ENV
-      - name: 'Publish to William278.net 🚀'
-        uses: WiIIiam278/bones-publish-action@v1
-        with:
-          api-key: ${{ secrets.BONES_API_KEY }}
-          project: 'huskclaims'
-          channel: 'alpha'
-          version: ${{ env.version_name }}
-          changelog: ${{ github.event.head_commit.message }}
-          distro-names: |
-            paper
-            fabric-1.21.1
-            fabric-1.21.4
-            fabric-1.21.5
-            fabric-1.21.6
-          distro-groups: |
-            paper
-            fabric
-            fabric
-            fabric
-            fabric
-          distro-descriptions: |
-            Paper
-            Fabric 1.21.1
-            Fabric 1.21.4
-            Fabric 1.21.5
-            Fabric 1.21.6
-          files: |
-            target/HuskClaims-Paper-${{ env.version_name }}.jar
-            target/HuskClaims-Fabric-${{ env.version_name }}+mc.1.21.1.jar
-            target/HuskClaims-Fabric-${{ env.version_name }}+mc.1.21.4.jar
-            target/HuskClaims-Fabric-${{ env.version_name }}+mc.1.21.5.jar
-            target/HuskClaims-Fabric-${{ env.version_name }}+mc.1.21.6.jar
+          name: HuskClaims Artifacts
+          path: |
+            target
